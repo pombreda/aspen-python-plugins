@@ -8,9 +8,12 @@ perform auto-reloading.
 
 """
 from __future__ import absolute_import, unicode_literals
-from aspen import renderers
 
+import re
+
+from aspen import renderers
 from jinja2 import BaseLoader, Environment, FileSystemLoader
+from markupsafe import escape as htmlescape
 
 
 class SimplateLoader(BaseLoader):
@@ -52,16 +55,23 @@ class Renderer(renderers.Renderer):
     you.
 
     """
+    autoescape = False
     global_context = {}
+    sgml_type_re = re.compile(r'\b(ht|sg|x)ml\b')
 
     def compile(self, filepath, raw):
-        environment = self.meta
+        self.is_sgml = bool(self.sgml_type_re.search(self.media_type))
+        if self.autoescape and self.is_sgml:
+            environment = self.meta['htmlescaped_env']
+        else:
+            environment = self.meta['default_env']
         return SimplateLoader(filepath, raw).load(environment, filepath)
 
     def render_content(self, context):
         charset = context['response'].charset
         # Inject globally-desired context
         context.update(self.global_context)
+        context['escape'] = htmlescape if self.is_sgml else lambda a: a
         return self.compiled.render(context).encode(charset)
 
 
@@ -74,5 +84,8 @@ class Factory(renderers.Factory):
         if configuration.project_root is not None:
             # Instantiate a loader that will be used to resolve template bases.
             loader = FileSystemLoader(configuration.project_root)
-        return Environment(loader=loader)
+        return {
+            'default_env': Environment(loader=loader),
+            'htmlescaped_env': Environment(loader=loader, autoescape=True),
+        }
 
