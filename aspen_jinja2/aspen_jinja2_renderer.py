@@ -13,7 +13,6 @@ import re
 
 from aspen import renderers
 from jinja2 import BaseLoader, Environment, FileSystemLoader
-from markupsafe import escape as htmlescape
 
 
 class SimplateLoader(BaseLoader):
@@ -54,10 +53,6 @@ class Renderer(renderers.Renderer):
     include those things by default, which may be fraught - but that's up to
     you.
 
-    In addition, an `escape` function is placed into the context. When
-    rendering a non-HTML page, the `escape` function will simply return the
-    string it receives without modifying it.
-
     By default Jinja's `autoescape` is turned off, you can enable it by setting
 
         website.renderer_factories['jinja2'].Renderer.autoescape = True
@@ -83,7 +78,6 @@ class Renderer(renderers.Renderer):
         charset = context['response'].charset
         # Inject globally-desired context
         context.update(self.global_context)
-        context['escape'] = htmlescape if self.is_sgml else lambda a: a
         return self.compiled.render(context).encode(charset)
 
 
